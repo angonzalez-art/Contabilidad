@@ -1,0 +1,116 @@
+ub ConciliacionSegSoc()
+    Dim ws As Worksheet
+    Dim i As Long, inicioGrupo As Long
+    Dim lastRow As Long
+    Dim cuentaActual As String
+    
+    Set ws = ActiveSheet
+    
+    ' 1. Configuración Inicial: Letra tamaño 11 para TODA la hoja
+    With ws.Cells.Font
+        .Name = "Calibri" ' O la fuente que prefieras
+        .Size = 11
+    End With
+    
+    ' 2. Insertar filas para el Título (Evita borrar encabezados)
+    ws.Rows("1:2").Insert Shift:=xlDown
+    
+    ' 3. Formato del Título Principal
+    With ws.Range("A1:G1")
+        .Merge
+        .Value = "ANEXO PAGO SEGURIDAD SOCIAL"
+        .Font.Bold = True
+        .Font.Size = 11 ' El título principal suele ir un poco más grande, pero si quieres 11 cámbialo aquí
+        .HorizontalAlignment = xlCenter
+        .VerticalAlignment = xlCenter
+    End With
+    
+    ' 4. Formato de Encabezados (Fila 3)
+    With ws.Range("A3:G3")
+        .Font.Bold = True
+        .Font.Color = vbBlack
+        .HorizontalAlignment = xlCenter
+    End With
+    
+    ' 5. Procesar Grupos, Totales y Colores
+    lastRow = ws.Cells(ws.Rows.Count, "C").End(xlUp).Row
+    i = 4
+    inicioGrupo = 4
+    
+    ' Ordenar para asegurar grupos (Columna C)
+    ws.Range("A4:G" & lastRow).Sort Key1:=ws.Range("C4"), Order1:=xlAscending, Header:=xlNo
+    
+    Do While ws.Cells(i, "C").Value <> ""
+        cuentaActual = CStr(ws.Cells(i, "C").Value)
+        
+        If CStr(ws.Cells(i + 1, "C").Value) <> cuentaActual Then
+            ' Insertar fila de total y espacio
+            ws.Rows(i + 1 & ":" & i + 2).Insert Shift:=xlDown
+            
+            Dim nombreTotal As String
+            Dim r As Integer, g As Integer, b As Integer
+            
+            ' Definición de Nombres y Colores
+            Select Case cuentaActual
+                Case "23700501": nombreTotal = "TOTAL PENSIÓN": r = 219: g = 229: b = 241
+                Case "23701001": nombreTotal = "TOTAL SALUD": r = 252: g = 225: b = 214
+                Case "23701501": nombreTotal = "TOTAL ARL": r = 231: g = 230: b = 245
+                Case "23702501": nombreTotal = "TOTAL PARAFISCALES Y CCF": r = 226: g = 239
+                Case Else: nombreTotal = "TOTAL " & cuentaActual: r = 242: g = 242: b = 242
+            End Select
+            
+            ' Escribir el Total
+            ws.Cells(i + 1, "B").Value = nombreTotal
+            
+            ' Fórmulas
+            ws.Cells(i + 1, "D").Formula = "=SUM(D" & inicioGrupo & ":D" & i & ")"
+            ws.Cells(i + 1, "F").Formula = "=SUM(F" & inicioGrupo & ":F" & i & ")"
+            ws.Cells(i + 1, "G").Formula = "=SUM(G" & inicioGrupo & ":G" & i & ")"
+            
+            ' Formato fila total
+            With ws.Range("A" & i + 1 & ":G" & i + 1)
+                .Interior.Color = RGB(r, g, b)
+                .Font.Bold = True
+                .Font.Color = vbBlack
+                .Font.Size = 11
+            End With
+            
+            i = i + 3
+            inicioGrupo = i
+        Else
+            i = i + 1
+        End If
+    Loop
+    
+    ' 6. TOTAL GENERAL (CAFÉ)
+    
+    Dim filaGranTotal As Long
+    filaGranTotal = ws.Cells(ws.Rows.Count, "B").End(xlUp).Row + 2
+    
+    ws.Cells(filaGranTotal, "B").Value = "TOTAL GENERAL"
+    ws.Cells(filaGranTotal, "D").Formula = "=SUMIF(B4:B" & filaGranTotal - 1 & ",""*TOTAL*"",D4:D" & filaGranTotal - 1 & ")"
+    ws.Cells(filaGranTotal, "F").Formula = "=SUMIF(B4:B" & filaGranTotal - 1 & ",""*TOTAL*"",F4:F" & filaGranTotal - 1 & ")"
+    ws.Cells(filaGranTotal, "G").Formula = "=SUMIF(B4:B" & filaGranTotal - 1 & ",""*TOTAL*"",G4:G" & filaGranTotal - 1 & ")"
+    
+    With ws.Range("A" & filaGranTotal & ":G" & filaGranTotal)
+        .Font.Color = vbBlack
+        .Font.Bold = True
+        .Font.Size = 11
+    End With
+    
+    ' 7. Ajustes finales: Formato moneda y limpieza
+    lastRow = ws.Cells(ws.Rows.Count, "B").End(xlUp).Row
+    ws.Range("D4:G" & lastRow).NumberFormat = "_($* #,##0_);_($* (#,##0);_($* ""-""??_);_(@_)"
+    
+    ' Asegurar que las celdas de datos (como Provenir) no tengan color residual
+    ws.Range("A4:G" & lastRow).FormatConditions.Delete
+    ' (Opcional) Resaltar diferencias en rojo suave si no son cero
+    With ws.Range("G4:G" & lastRow).FormatConditions.Add(xlCellValue, xlNotEqual, 0)
+        .Font.Color = RGB(156, 0, 6)
+        .Font.Bold = True
+    End With
+    
+    ws.Columns("A:G").AutoFit
+    
+    MsgBox "¡Macro ejecutada! Todo en tamaño 11 y con formato profesional.", vbInformation
+End Sub

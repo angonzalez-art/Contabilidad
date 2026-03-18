@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Conciliación Seguridad Social</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f4f7f6;
+            color: #333;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .container {
+            background-color: white;
+            padding: 40px;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            width: 100%;
+            max-width: 500px;
+        }
+        h2 {
+            text-align: center;
+            color: #2c3e50;
+            margin-bottom: 20px;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            font-weight: bold;
+            margin-bottom: 8px;
+        }
+        input[type="file"] {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+        button {
+            width: 100%;
+            padding: 12px;
+            background-color: #27ae60;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #219150;
+        }
+        #status {
+            margin-top: 15px;
+            text-align: center;
+            font-weight: bold;
+            color: #e67e22;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>Conciliación Seguridad Social</h2>
+    <form id="uploadForm">
+        <div class="form-group">
+            <label for="pdf_file">1. Selecciona el PDF del mes:</label>
+            <input type="file" id="pdf_file" name="pdf_file" accept=".pdf" required>
+        </div>
+        
+        <div class="form-group">
+            <label for="excel_file">2. Selecciona el EXCEL (Libro Mayor):</label>
+            <input type="file" id="excel_file" name="excel_file" accept=".xlsx" required>
+        </div>
+        
+        <button type="submit" id="submitBtn">Procesar y Descargar Conciliación</button>
+    </form>
+    <div id="status"></div>
+</div>
+
+<script>
+    document.getElementById('uploadForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        const statusDiv = document.getElementById('status');
+        const submitBtn = document.getElementById('submitBtn');
+        
+        const pdfFile = document.getElementById('pdf_file').files[0];
+        const excelFile = document.getElementById('excel_file').files[0];
+        
+        if (!pdfFile || !excelFile) {
+            statusDiv.textContent = "Por favor, selecciona ambos archivos.";
+            return;
+        }
+
+        // Preparamos los datos para enviarlos a Python
+        const formData = new FormData();
+        formData.append('pdf_file', pdfFile);
+        formData.append('excel_file', excelFile);
+
+        statusDiv.textContent = "Procesando... Esto puede tardar unos segundos.";
+        statusDiv.style.color = "#e67e22";
+        submitBtn.disabled = true;
+
+        try {
+            // Enviamos los archivos al servidor Python (Flask)
+            const response = await fetch('http://127.0.0.1:5000/procesar', {
+                method: 'POST',
+                body: formData
+            });
+
+            if (response.ok) {
+                // Descargamos el archivo resultante
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'Conciliacion_Pagos_Seguridad_Social.xlsx';
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                
+                statusDiv.textContent = "¡Éxito! Archivo descargado.";
+                statusDiv.style.color = "#27ae60";
+            } else {
+                const errorText = await response.text();
+                statusDiv.textContent = "Error en el servidor: " + errorText;
+                statusDiv.style.color = "#c0392b";
+            }
+        } catch (error) {
+            statusDiv.textContent = "Error de conexión con el servidor Python.";
+            statusDiv.style.color = "#c0392b";
+        } finally {
+            submitBtn.disabled = false;
+        }
+    });
+</script>
+
+</body>
+</html>
